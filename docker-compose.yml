@@ -1,49 +1,64 @@
 version: "3.3"
 
 services:
-  TeamCity:
+  TeamCity-Agent:
     environment:
-      PATH_SOURCE: ${PATH_SOURCE}
+      SERVER_URL: localhost:${PORT_TEAMCITY}
+    container_name: team-city-agent-instance
+    image: jetbrains/teamcity-agent:${VERSION_TEAMCITY_AGENT}
+    volumes:
+      - ${PATH_SOURCE}/TeamCity-Agent/conf:/data/teamcity_agent/conf
+  TeamCity:
+    # environment:
+    #   PATH_SOURCE: ${PATH_SOURCE}
+    #   # VERSION: ${VERSION_TEAMCITY}
+    #   PORT_TEAMCITY: ${PORT_TEAMCITY}
     container_name: team-city-server-instance
-    image: jetbrains/teamcity-server
+    image: jetbrains/teamcity-server:${VERSION_TEAMCITY}
     volumes:
       - ${PATH_SOURCE}/TeamCity/datadir:/data/teamcity_server/datadir
       - ${PATH_SOURCE}/TeamCity/logs:/opt/teamcity/logs
     ports:
-      - 8111:8111
+      - ${PORT_TEAMCITY}:8111
   Hub:
-    environment:
-      PATH_SOURCE: ${PATH_SOURCE}
+    # environment:
+    #   PATH_SOURCE: ${PATH_SOURCE}
+    #   # VERSION: ${VERSION_HUB}
+    #   PORT: ${PORT_HUB}
     container_name: hub-server-instance
-    image: jetbrains/hub:2018.4.11442
+    image: jetbrains/hub:${VERSION_HUB}
     volumes:
       - ${PATH_SOURCE}/Hub/data:/opt/hub/data
       - ${PATH_SOURCE}/Hub/conf:/opt/hub/conf
       - ${PATH_SOURCE}/Hub/logs:/opt/hub/logs
       - ${PATH_SOURCE}/Hub/backups:/opt/hub/backups
     ports:
-      - 8081:8080
+      - ${PORT_HUB}:8080
   Upsource:
-    environment:
-      PATH_SOURCE: ${PATH_SOURCE}
+    # environment:
+    #   PATH_SOURCE: ${PATH_SOURCE}
+    #   # VERSION: ${VERSION_UPSOURCE}
+    #   PORT: ${PORT_UPSOURCE}
     container_name: upsource-server-instance
-    image: jetbrains/upsource:2018.2.1291
+    image: jetbrains/upsource:${VERSION_UPSOURCE}
     volumes:
       - ${PATH_SOURCE}/Upsource/data:/opt/upsource/data
       - ${PATH_SOURCE}/Upsource/conf:/opt/upsource/conf
       - ${PATH_SOURCE}/Upsource/logs:/opt/upsource/logs
       - ${PATH_SOURCE}/Upsource/backups:/opt/upsource/backups
     ports:
-      - 8082:8080
+      - ${PORT_UPSOURCE}:8080
   YouTrack:
-    environment:
-      PATH_SOURCE: ${PATH_SOURCE}
+    # environment:
+    #   PATH_SOURCE: ${PATH_SOURCE}
+    #   # VERSION: ${VERSION_YOUTRACK}
+    #   PORT: ${PORT_YOUTRACK}
     container_name: youtrack-server-instance
-    image: jetbrains/youtrack:2019.1.52584
+    image: jetbrains/youtrack:${VERSION_YOUTRACK}
     volumes:
       - ${PATH_SOURCE}/YouTrack/data:/opt/youtrack/data
       - ${PATH_SOURCE}/YouTrack/conf:/opt/youtrack/conf
       - ${PATH_SOURCE}/YouTrack/logs:/opt/youtrack/logs
       - ${PATH_SOURCE}/YouTrack/backups:/opt/youtrack/backups
     ports:
-      - 8083:8080
+      - ${PORT_YOUTRACK}:8080
