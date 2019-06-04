@@ -1,5 +1,7 @@
 set PATH_SOURCE=//e/Development/Developer/JetBrainsToolbox
 
+set CONNECT_HOST_TEAMCITY=localhost
+
 set VERSION_TEAMCITY=latest
 set PORT_TEAMCITY=8111
 

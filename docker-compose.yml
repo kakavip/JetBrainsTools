@@ -3,11 +3,13 @@ version: "3.3"
 services:
   TeamCity-Agent:
     environment:
-      SERVER_URL: localhost:${PORT_TEAMCITY}
+      SERVER_URL: ${CONNECT_HOST_TEAMCITY}:${PORT_TEAMCITY}
     container_name: team-city-agent-instance
     image: jetbrains/teamcity-agent:${VERSION_TEAMCITY_AGENT}
     volumes:
       - ${PATH_SOURCE}/TeamCity-Agent/conf:/data/teamcity_agent/conf
+    depends_on: 
+      - TeamCity
   TeamCity:
     # environment:
     #   PATH_SOURCE: ${PATH_SOURCE}
