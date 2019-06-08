@@ -7,60 +7,62 @@ services:
     container_name: team-city-agent-instance
     image: jetbrains/teamcity-agent:${VERSION_TEAMCITY_AGENT}
     volumes:
-      - ${PATH_SOURCE}/TeamCity-Agent/conf:/data/teamcity_agent/conf
-    depends_on: 
+      - ./TeamCity-Agent/conf:/data/teamcity_agent/conf
+    depends_on:
       - TeamCity
+    ports:
+      - ${PORT_TEAMCITY_AGENT}:9090
   TeamCity:
     # environment:
-    #   PATH_SOURCE: ${PATH_SOURCE}
+    #   PATH_SOURCE: .
     #   # VERSION: ${VERSION_TEAMCITY}
     #   PORT_TEAMCITY: ${PORT_TEAMCITY}
     container_name: team-city-server-instance
     image: jetbrains/teamcity-server:${VERSION_TEAMCITY}
     volumes:
-      - ${PATH_SOURCE}/TeamCity/datadir:/data/teamcity_server/datadir
-      - ${PATH_SOURCE}/TeamCity/logs:/opt/teamcity/logs
+      - ./TeamCity/datadir:/data/teamcity_server/datadir
+      - ./TeamCity/logs:/opt/teamcity/logs
     ports:
       - ${PORT_TEAMCITY}:8111
   Hub:
     # environment:
-    #   PATH_SOURCE: ${PATH_SOURCE}
+    #   PATH_SOURCE: .
     #   # VERSION: ${VERSION_HUB}
     #   PORT: ${PORT_HUB}
     container_name: hub-server-instance
     image: jetbrains/hub:${VERSION_HUB}
     volumes:
-      - ${PATH_SOURCE}/Hub/data:/opt/hub/data
-      - ${PATH_SOURCE}/Hub/conf:/opt/hub/conf
-      - ${PATH_SOURCE}/Hub/logs:/opt/hub/logs
-      - ${PATH_SOURCE}/Hub/backups:/opt/hub/backups
+      - ./Hub/data:/opt/hub/data
+      - ./Hub/conf:/opt/hub/conf
+      - ./Hub/logs:/opt/hub/logs
+      - ./Hub/backups:/opt/hub/backups
     ports:
       - ${PORT_HUB}:8080
   Upsource:
     # environment:
-    #   PATH_SOURCE: ${PATH_SOURCE}
+    #   PATH_SOURCE: .
     #   # VERSION: ${VERSION_UPSOURCE}
     #   PORT: ${PORT_UPSOURCE}
     container_name: upsource-server-instance
     image: jetbrains/upsource:${VERSION_UPSOURCE}
     volumes:
-      - ${PATH_SOURCE}/Upsource/data:/opt/upsource/data
-      - ${PATH_SOURCE}/Upsource/conf:/opt/upsource/conf
-      - ${PATH_SOURCE}/Upsource/logs:/opt/upsource/logs
-      - ${PATH_SOURCE}/Upsource/backups:/opt/upsource/backups
+      - ./Upsource/data:/opt/upsource/data
+      - ./Upsource/conf:/opt/upsource/conf
+      - ./Upsource/logs:/opt/upsource/logs
+      - ./Upsource/backups:/opt/upsource/backups
     ports:
       - ${PORT_UPSOURCE}:8080
   YouTrack:
     # environment:
-    #   PATH_SOURCE: ${PATH_SOURCE}
+    #   PATH_SOURCE: .
     #   # VERSION: ${VERSION_YOUTRACK}
     #   PORT: ${PORT_YOUTRACK}
     container_name: youtrack-server-instance
     image: jetbrains/youtrack:${VERSION_YOUTRACK}
     volumes:
-      - ${PATH_SOURCE}/YouTrack/data:/opt/youtrack/data
-      - ${PATH_SOURCE}/YouTrack/conf:/opt/youtrack/conf
-      - ${PATH_SOURCE}/YouTrack/logs:/opt/youtrack/logs
-      - ${PATH_SOURCE}/YouTrack/backups:/opt/youtrack/backups
+      - ./YouTrack/data:/opt/youtrack/data
+      - ./YouTrack/conf:/opt/youtrack/conf
+      - ./YouTrack/logs:/opt/youtrack/logs
+      - ./YouTrack/backups:/opt/youtrack/backups
     ports:
       - ${PORT_YOUTRACK}:8080
