@@ -1,4 +1,4 @@
-REM set PATH_SOURCE=//e/Development/Developer/JetBrainsToolbox
+set PATH_SOURCE=//e/Development/Developer/JetBrainsToolbox
 
 set CONNECT_HOST_TEAMCITY=localhost
 
