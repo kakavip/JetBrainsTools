@@ -1,5 +1,2 @@
-build:
-  docker:
-    hub: Hub/Dockerfile
-# run:
-#   hub: 
+run:
+  hub: ./run_servers.sh
