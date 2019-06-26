@@ -7,7 +7,7 @@ services:
     container_name: team-city-agent-instance
     image: jetbrains/teamcity-agent:${VERSION_TEAMCITY_AGENT}
     volumes:
-      - TeamCity-Agent/conf:/data/teamcity_agent/conf
+      - ./TeamCity-Agent/conf:/data/teamcity_agent/conf
     depends_on: 
       - TeamCity
   TeamCity:
@@ -18,8 +18,8 @@ services:
     container_name: team-city-server-instance
     image: jetbrains/teamcity-server:${VERSION_TEAMCITY}
     volumes:
-      - TeamCity/datadir:/data/teamcity_server/datadir
-      - TeamCity/logs:/opt/teamcity/logs
+      - ./TeamCity/datadir:/data/teamcity_server/datadir
+      - ./TeamCity/logs:/opt/teamcity/logs
     ports:
       - ${PORT_TEAMCITY}:8111
   Hub:
@@ -30,10 +30,10 @@ services:
     container_name: hub-server-instance
     image: jetbrains/hub:${VERSION_HUB}
     volumes:
-      - Hub/data:/opt/hub/data
-      - Hub/conf:/opt/hub/conf
-      - Hub/logs:/opt/hub/logs
-      - Hub/backups:/opt/hub/backups
+      - ./Hub/data:/opt/hub/data
+      - ./Hub/conf:/opt/hub/conf
+      - ./Hub/logs:/opt/hub/logs
+      - ./Hub/backups:/opt/hub/backups
     ports:
       - ${PORT_HUB}:8080
   Upsource:
@@ -44,10 +44,10 @@ services:
     container_name: upsource-server-instance
     image: jetbrains/upsource:${VERSION_UPSOURCE}
     volumes:
-      - Upsource/data:/opt/upsource/data
-      - Upsource/conf:/opt/upsource/conf
-      - Upsource/logs:/opt/upsource/logs
-      - Upsource/backups:/opt/upsource/backups
+      - ./Upsource/data:/opt/upsource/data
+      - ./Upsource/conf:/opt/upsource/conf
+      - ./Upsource/logs:/opt/upsource/logs
+      - ./Upsource/backups:/opt/upsource/backups
     ports:
       - ${PORT_UPSOURCE}:8080
   YouTrack:
@@ -58,9 +58,9 @@ services:
     container_name: youtrack-server-instance
     image: jetbrains/youtrack:${VERSION_YOUTRACK}
     volumes:
-      - YouTrack/data:/opt/youtrack/data
-      - YouTrack/conf:/opt/youtrack/conf
-      - YouTrack/logs:/opt/youtrack/logs
-      - YouTrack/backups:/opt/youtrack/backups
+      - ./YouTrack/data:/opt/youtrack/data
+      - ./YouTrack/conf:/opt/youtrack/conf
+      - ./YouTrack/logs:/opt/youtrack/logs
+      - ./YouTrack/backups:/opt/youtrack/backups
     ports:
       - ${PORT_YOUTRACK}:8080
