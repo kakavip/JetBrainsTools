@@ -1,0 +1,284 @@
+*˜/*
+ Copyright 2017 JetBrains s.r.o.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
+
+var dateTime = require('@jetbrains/youtrack-scripting-api/date-time');
+var http = require('@jetbrains/youtrack-scripting-api/http');
+var constants = require('./constants');
+var cache = require('@jetbrains/youtrack-scripting-api/cache');
+
+var getJsonsCache = function() {
+  var value = ctx.get().getObject('jsonsCache');
+  if (!value) {
+    value = cache.create(100, 'JSONs');
+    ctx.get().setObject('jsonsCache', value);
+  }
+  return value;
+};
+
+var createFakeSeraphNotOkResponse = function (result) { // required to handle https://jira.atlassian.com/browse/JRA-41559
+  var seraphHeaders = result.headers && result.headers.filter(function (header) {
+      return header.name === 'X-Seraph-LoginReason';
+    }) || [];
+  var seraphNotOkHeaders = seraphHeaders.filter(function (header) {
+    return header.value.indexOf('Failure') > -1;
+  });
+  if (seraphHeaders.length > 0 && seraphNotOkHeaders.length > 0) {
+    return {
+      response: '{"errorMessages": "Response X-Seraph-LoginReason header set to ' + seraphNotOkHeaders[0].value + '. You are probably not authenticated"}',
+      code: result.code
+    }
+  }
+};
+
+Jira = function (url, sslKeyName, login, password) {
+  url = url + (url.lastIndexOf('/') === url.length - 1 ? '' : '/');
+  this.connection = new http.Connection(url + 'rest/api/2', sslKeyName).basicAuth(login, password);
+  this.authConnection = new http.Connection(url + 'rest/auth/1', sslKeyName).basicAuth(login, password);
+  this.plainConnection = new http.Connection(url + 'secure', sslKeyName).basicAuth(login, password);
+};
+
+Jira.prototype.getJson = function (uri, failureHandler, ignoreCache) {
+  return getJson(this.connection, uri, failureHandler, ignoreCache);
+};
+
+var getJson = function (connection, uri, failureHandler, ignoreCache) {
+  var doIt = function () {
+    var result = connection.getSync(uri);
+    var fakeResponse;
+    if (!result.isSuccess || (fakeResponse = createFakeSeraphNotOkResponse(result))) {
+      composeFailureHandler(failureHandler)(fakeResponse || result);
+      return;
+    }
+    return JSON.parse(result.response);
+  };
+  return ignoreCache ? doIt() : getJsonsCache().get(uri, doIt);
+};
+
+Jira.prototype.getGlobalPermissions = function (failureHandler) {
+  var ret = this.getJson('/mypermissions', failureHandler);
+  return ret && ret['permissions'];
+};
+
+Jira.prototype.getProjectPermissions = function (projectKey, failureHandler) {
+  var ret = this.getJson('/mypermissions?projectKey=' + projectKey, failureHandler);
+  var original = ret && ret['permissions'];
+  var permisions = {};
+  Object.keys(constants.permissionKeys).forEach(function (permissionKey) {
+    permisions[permissionKey] = constants.permissionKeys[permissionKey].some(function (alias) {
+      return original && original[alias] && original[alias].havePermission;
+    });
+  });
+  return permisions;
+};
+
+Jira.prototype.getIssueTypes = function (failureHandler) {
+  return this.getJson('/issuetype', failureHandler);
+};
+
+Jira.prototype.getLinkTypes = function (failureHandler) {
+  return this.getJson('/issueLinkType', failureHandler);
+};
+
+Jira.prototype.getFields = function (successHandler, failureHandler) {
+  successHandler(this.getJson('/field', failureHandler));
+};
+
+Jira.prototype.getWatchers = function (issueKey, successHandler, failureHandler) {
+  successHandler(this.getJson('/issue/' + issueKey + '/watchers', failureHandler)['watchers']);
+};
+
+Jira.prototype.getVotes = function (issueKey, successHandler, failureHandler) {
+  successHandler(this.getJson('/issue/' + issueKey + '/votes', failureHandler)['voters']);
+};
+
+Jira.prototype.getUser = function (username, failureHandler) {
+  return this.getJson('/user?username=' + encodeURIComponent(username), failureHandler, true);
+};
+
+Jira.prototype.getCurrentUser = function (failureHandler) {
+  var sessionJson = getJson(this.authConnection, '/session', failureHandler, true);
+  return this.getJson('/user?username=' + encodeURIComponent(sessionJson.name), failureHandler, true);
+};
+
+Jira.prototype.getProjects = function (successHandler, failureHandler) {
+  successHandler(this.getJson('/project', failureHandler));
+};
+
+Jira.prototype.getGroup = function (groupName, failureHandler) {
+  return this.getJson('/group?groupname=' + encodeURIComponent(groupName) + '&expand=users', failureHandler);
+};
+
+Jira.prototype.getProject = function (projectKey, failureHandler) {
+  return this.getJson('/project/' + projectKey, failureHandler);
+};
+
+Jira.prototype.getProjectVersions = function (projectKey, failureHandler) {
+  return this.getJson('/project/' + projectKey + '/versions', failureHandler);
+};
+
+Jira.prototype.getServerInfo = function (failureHandler) {
+  return this.getJson('/serverInfo', failureHandler);
+};
+
+Jira.prototype.getIssueCreateMeta = function (projectKey, failureHandler) {
+  return this.getJson('/issue/createmeta?projectKeys=' + projectKey + '&expand=projects.issuetypes.fields.allowedValues', failureHandler, true);
+};
+
+Jira.prototype.getAttachmentContent = function (attachment, successHandler, failureHandler) {
+  var result = this.plainConnection.getSync('/attachment/' + attachment.id + '/');
+  if (result.isSuccess) {
+    successHandler(result.responseAsStream);
+  } else {
+    failureHandler(result);
+  }
+};
+
+Jira.prototype.getStatuses = function (failureHandler) {
+  return this.getJson('/status', failureHandler);
+};
+
+Jira.prototype.getResolutions = function (failureHandler) {
+  return this.getJson('/resolution', failureHandler);
+};
+
+Jira.prototype.getRole = function (projectKey, roleId, failureHandler) {
+  return this.getJson('/project/' + projectKey + '/role/' + roleId, failureHandler);
+};
+
+Jira.prototype.getComponent = function (componentId, failureHandler) {
+  return this.getJson('/component/' + componentId, failureHandler);
+};
+
+Jira.prototype.getIssueChangelog = function (issueKey, failureHandler) {
+  // there's not need to get any field info here, but there is no way to turn it off completely
+  return this.getJson('/issue/' + issueKey + '?fields=created&expand=changelog', failureHandler);
+};
+
+Jira.prototype.getIssue = function (issueKey, failureHandler) {
+  return this.getJson('/issue/' + issueKey + '?expand=changelog', failureHandler);
+};
+
+Jira.prototype.getIssues = function (projectKey, from, to, fromId, maxCount, successHandler, failureHandler) {
+  var filters = [];
+  if (projectKey) {
+    filters.push('project = "' + projectKey + '"');
+  }
+  if (fromId) {
+    filters.push('id > ' + fromId);
+  }
+  if (from) {
+    from = (from.length > 16 ? from.substr(0, 16) : from).replace('T', ' ');
+    filters.push('updated >= "' + from + '"');
+  }
+  if (to) {
+    to = (to.length > 16 ? to.substr(0, 16) : to).replace('T', ' ');
+    filters.push('updated <= "' + to + '"');
+  }
+  var searchUri = '/search?jql=' + encodeURIComponent(filters.join(' and ') + ' order by id') + '&fields=*all&expand=changelog';
+  this.getPaginated(searchUri, 'issues', maxCount, successHandler, failureHandler);
+};
+
+Jira.prototype.getAssignees = function (projectKey, successHandler, failureHandler) {
+  var searchUri = '/user/assignable/search?project=' + projectKey;
+  this.getPaginated(searchUri, null, 50, successHandler, failureHandler);
+};
+
+Jira.prototype.getWorklogs = function (issueKey, failureHandler) {
+  // jira doesn't support paginating here
+  return this.getJson('/issue/' + issueKey + '/worklog', failureHandler);
+};
+
+Jira.prototype.getComments = function (issueKey, failureHandler) {
+  // jira doesn't support paginating here
+  return this.getJson('/issue/' + issueKey + '/comment', failureHandler);
+};
+
+Jira.prototype.getPaginated = function (searchUri, arrayName, pageSize, successHandler, failureHandler) {
+  var startAt = 0;
+  var actualPageSize = 0;
+  do {
+    var uri = searchUri + (searchUri.indexOf('?') > -1 ? '&' : '?') + 'startAt=' + startAt + '&maxResults=' + pageSize;
+    var callResult = this.getJson(uri, failureHandler, true);
+    var result = arrayName ? callResult[arrayName] : callResult;
+    actualPageSize = result ? result.length : 0;
+    startAt += actualPageSize;
+  } while (successHandler(result) && actualPageSize === pageSize);
+};
+
+var composeFailureHandler = function(customFailureHandler) {
+  return function (result) {
+    console.error('Error occured when quering Jira');
+    if (result.response) {
+      var errorJson = null;
+      try {
+        errorJson = JSON.parse(result.response);
+      } catch (e) {
+        // ignore, html can be here, not json
+      }
+      console.error(result.code + ' ' + (errorJson ? errorJson.errorMessages : ''));
+    }
+    result.exception && console.error(result.exception);
+    customFailureHandler && customFailureHandler(result);
+  };
+};
+
+var parseTimestamp = function (timestamp) {
+  return dateTime.parse(timestamp, ["yyyy-MM-dd'T'HH:mm:ss.SSSX", "yyyy-MM-dd'T'HH:mm:ssX"]);
+};
+
+// publish
+exports.JiraClient = Jira;
+exports.parseShortTime = function (timestamp) {
+  try {
+    return dateTime.parse(timestamp, ["yyyy-MM-dd'T'HH:mm:ssX", "yyyy-MM-dd'T'HH:mmX"]);
+  } catch(e) {
+    var looksLikeATimestamp = function () {
+      var digitsArray = timestamp.match(/\d/g);
+      var numberOfDigits = digitsArray ? digitsArray.length : 0;
+      return numberOfDigits * 2 > timestamp.length; // more than a half of chars are digits
+    };
+    if (!looksLikeATimestamp()) {
+      // that's lame, but Jira would ofter have some text instead of a date, so in case the string is too long,
+      // this means it's some text that'll be replaced with 01.01.1970 00:00:01
+      return 1000;
+    }
+    throw e;
+  }
+};
+exports.parseTimestamp = parseTimestamp;
+exports.parseDate = function (timestamp, timeZone) {
+  return dateTime.parse(timestamp, ['yyyy-MM-dd'], timeZone);
+};
+exports.roundTimestampUpToMinutes = function (timestamp) {
+  return timestamp.substring(0, 17) + '00.000' + timestamp.substring(23);
+};
+exports.toSearchTimeString = function(utcTimestampString, timeZoneId) {
+  if (!utcTimestampString) {
+    return utcTimestampString;
+  }
+  if (!timeZoneId) {
+    console.warn('Timezone id is not provided. Using as is.');
+    return utcTimestampString;
+  }
+  try {
+    var timestamp = parseTimestamp(utcTimestampString);
+    return dateTime.format(timestamp, 'yyyy-MM-dd HH:mm', timeZoneId);
+  } catch (e) {
+    console.warn('Could not format to Search time format. Using default.');
+    console.warn(e);
+    return utcTimestampString;
+  }
+};
